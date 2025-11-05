@@ -53,6 +53,13 @@ uint32_t detectBaudRate() {
       bytesReceived += SportSerial.available();
       SportSerial.read();  // Просто очищаємо буфер
     }
+    
+    // Ранній вихід: якщо вже є достатньо даних - не чекаємо
+    if (bytesReceived > 50) {
+      Serial.printf("Early detection! Received %d bytes\n", bytesReceived);
+      break;
+    }
+    
     delay(10);
   }
   
@@ -78,6 +85,13 @@ uint32_t detectBaudRate() {
       bytesReceived += SportSerial.available();
       SportSerial.read();
     }
+    
+    // Ранній вихід: якщо вже є достатньо даних - не чекаємо
+    if (bytesReceived > 50) {
+      Serial.printf("Early detection! Received %d bytes\n", bytesReceived);
+      break;
+    }
+    
     delay(10);
   }
   
