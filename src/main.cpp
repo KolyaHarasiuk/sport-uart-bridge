@@ -9,7 +9,7 @@
 // Піни для медіаконвертора (full-duplex, нормальний)
 #define MEDIA_RX 16
 #define MEDIA_TX 17
-#define MEDIA_BAUD 420000
+#define MEDIA_BAUD 400000
 
 // UART порти
 HardwareSerial SportSerial(1);    // UART1 для S-Port
