@@ -28,8 +28,8 @@ GND ────────────────> GND
 
 ## Технічні параметри
 
-- **S-Port швидкість:** 420000 baud (FrSky high-speed)
-- **UART швидкість:** 420000 baud
+- **S-Port швидкість:** 400000 baud (FrSky high-speed)
+- **UART швидкість:** 400000 baud
 - **S-Port формат:** 8N1, інвертований, half-duplex
 - **UART формат:** 8N1, нормальний, full-duplex
 
