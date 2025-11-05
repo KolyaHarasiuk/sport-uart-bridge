@@ -4,12 +4,14 @@
 
 // Піни для S-Port (half-duplex, інвертований)
 #define SPORT_PIN 10          // Один пін для TX+RX
-#define SPORT_BAUD 400000
 
 // Піни для медіаконвертора (full-duplex, нормальний)
 #define MEDIA_RX 16
 #define MEDIA_TX 17
-#define MEDIA_BAUD 400000
+
+// Підтримувані швидкості
+#define BAUD_HIGH 400000
+#define BAUD_LOW 115200
 
 // UART порти
 HardwareSerial SportSerial(1);    // UART1 для S-Port
@@ -18,30 +20,98 @@ HardwareSerial MediaSerial(2);    // UART2 для медіаконвертора
 // Буфери для даних
 uint8_t buffer[256];
 
+// Поточна швидкість
+uint32_t currentBaud = 0;
+
+// Налаштування S-Port з певною швидкістю
+void configureSPort(uint32_t baud) {
+  SportSerial.end();  // Закрити попередній порт
+  delay(100);
+  
+  SportSerial.begin(baud, SERIAL_8N1, SPORT_PIN, SPORT_PIN);
+  uart_set_line_inverse(UART_NUM_1, UART_SIGNAL_TXD_INV | UART_SIGNAL_RXD_INV);
+  uart_set_mode(UART_NUM_1, UART_MODE_RS485_HALF_DUPLEX);
+  
+  currentBaud = baud;
+  Serial.printf("S-Port configured: %d baud\n", baud);
+}
+
+// Автоматичне визначення швидкості S-Port
+uint32_t detectBaudRate() {
+  Serial.println("Starting auto-baud detection...");
+  
+  // Спочатку пробуємо високу швидкість (400k)
+  Serial.println("Trying 400000 baud...");
+  configureSPort(BAUD_HIGH);
+  
+  unsigned long startTime = millis();
+  int bytesReceived = 0;
+  
+  // Чекаємо дані протягом 2 секунд
+  while (millis() - startTime < 2000) {
+    if (SportSerial.available()) {
+      bytesReceived += SportSerial.available();
+      SportSerial.read();  // Просто очищаємо буфер
+    }
+    delay(10);
+  }
+  
+  Serial.printf("Received %d bytes at 400000 baud\n", bytesReceived);
+  
+  // Якщо отримали дані - використовуємо цю швидкість
+  if (bytesReceived > 10) {
+    Serial.println("✓ Detected 400000 baud");
+    configureSPort(BAUD_HIGH);  // Реконфігуруємо для очистки буферів
+    return BAUD_HIGH;
+  }
+  
+  // Якщо немає даних - пробуємо низьку швидкість (115200)
+  Serial.println("No data at 400k, trying 115200 baud...");
+  configureSPort(BAUD_LOW);
+  
+  startTime = millis();
+  bytesReceived = 0;
+  
+  // Чекаємо дані протягом 2 секунд
+  while (millis() - startTime < 2000) {
+    if (SportSerial.available()) {
+      bytesReceived += SportSerial.available();
+      SportSerial.read();
+    }
+    delay(10);
+  }
+  
+  Serial.printf("Received %d bytes at 115200 baud\n", bytesReceived);
+  
+  if (bytesReceived > 10) {
+    Serial.println("✓ Detected 115200 baud");
+    configureSPort(BAUD_LOW);
+    return BAUD_LOW;
+  }
+  
+  // Якщо нічого не знайдено - використовуємо 400k за замовчуванням
+  Serial.println("⚠ No data detected, defaulting to 400000 baud");
+  configureSPort(BAUD_HIGH);
+  return BAUD_HIGH;
+}
+
 void setup() {
   // Ініціалізація Serial для дебагу (опціонально)
   Serial.begin(115200);
   delay(1000);
+  Serial.println("\n\n=================================");
   Serial.println("S-Port <-> UART Bridge starting...");
+  Serial.println("=================================\n");
 
-  // Налаштування S-Port (UART1) - half-duplex, інвертований
-  // Використовуємо один пін для TX і RX
-  SportSerial.begin(SPORT_BAUD, SERIAL_8N1, SPORT_PIN, SPORT_PIN);
-  
-  // Встановлюємо інверсію сигналу для S-Port
-  // Потрібно використати низькорівневий API ESP-IDF
-  uart_set_line_inverse(UART_NUM_1, UART_SIGNAL_TXD_INV | UART_SIGNAL_RXD_INV);
-  
-  // Встановлюємо half-duplex режим (опціонально, але краще)
-  uart_set_mode(UART_NUM_1, UART_MODE_RS485_HALF_DUPLEX);
-  
-  Serial.println("S-Port configured: GPIO 10, 420000 baud, inverted, half-duplex");
+  // Автоматичне визначення швидкості S-Port
+  currentBaud = detectBaudRate();
 
-  // Налаштування медіаконвертора (UART2) - full-duplex, нормальний
-  MediaSerial.begin(MEDIA_BAUD, SERIAL_8N1, MEDIA_RX, MEDIA_TX);
+  // Налаштування медіаконвертора з тією ж швидкістю
+  MediaSerial.begin(currentBaud, SERIAL_8N1, MEDIA_RX, MEDIA_TX);
   
-  Serial.println("Media UART configured: RX=16, TX=17, 420000 baud");
-  Serial.println("Bridge ready!");
+  Serial.printf("\n✓ Media UART configured: RX=%d, TX=%d, %d baud\n", MEDIA_RX, MEDIA_TX, currentBaud);
+  Serial.println("✓ Bridge ready!\n");
+  Serial.println("=================================\n");
 }
 
 void loop() {
