@@ -4,7 +4,7 @@
 
 // Піни для S-Port (half-duplex, інвертований)
 #define SPORT_PIN 10          // Один пін для TX+RX
-#define SPORT_BAUD 420000
+#define SPORT_BAUD 400000
 
 // Піни для медіаконвертора (full-duplex, нормальний)
 #define MEDIA_RX 16
